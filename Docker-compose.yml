@@ -1,0 +1,60 @@
+version: "3"
+
+services:
+  database:
+    hostname: database
+    networks:
+      - database
+    environment:
+      - POSTGRES_PASSWORD
+      - POSTGRES_USER
+      - POSTGRES_DB
+    image: postgres:alpine3.14
+    restart: unless-stopped
+  backend:
+    hostname: backend
+    networks:
+      - frontend
+      - database
+    build:
+      context: ./lib_catalog
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - database
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://backend:8000/api/v1/lib/book/"
+        ]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  frontend:
+    hostname: frontend
+    networks:
+      - frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      - database
+      - backend
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://frontend/" ]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+networks:
+  frontend:
+  database:
